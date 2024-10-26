@@ -5,6 +5,8 @@ import psutil
 import requests
 import discord
 from discord.ext import commands
+import subprocess
+import wmi
 
 
 config_file_path = 'config.ini'
@@ -13,6 +15,7 @@ config.read(config_file_path)
 
 BOT_TOKEN = config['Settings']['token']
 GUILD_ID = config['Settings']['server_id']
+GUILD_ID = int(GUILD_ID)
 
 intents = discord.Intents.default()
 intents.guilds = True
@@ -80,7 +83,6 @@ def get_system_info():
         f"**Total Disk Space:** {total_disk:.2f} GB"
     )
     return hostname, info
-
 
 @bot.event
 async def on_ready():
